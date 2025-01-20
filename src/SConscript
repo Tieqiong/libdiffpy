@@ -1,4 +1,5 @@
 import os
+import platform
 
 Import('env')
 
@@ -21,8 +22,6 @@ fast_linkflags = ['-s']
 
 # Specify minimum C++ standard.  Allow later standard from sconscript.local.
 # In case of multiple `-std` options the last option holds.
-env.PrependUnique(CXXFLAGS='-std=c++11', delete_existing=1)
-
 # Platform specific intricacies.
 if env['PLATFORM'] == 'darwin':
     env.AppendUnique(CXXFLAGS='-ftemplate-depth-256')
@@ -31,31 +30,39 @@ if env['PLATFORM'] == 'darwin':
     fast_linkflags[:] = []
 
 # Compiler specific options
-if icpc:
-    # options for Intel C++ compiler on hpc dev-intel07
-    env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
-    env.PrependUnique(LIBS=['imf'])
-    fast_optimflags = ['-fast', '-no-ipo']
-else:
-    # g++ options
-    env.PrependUnique(CCFLAGS=['-Wall'])
-    fast_optimflags = ['-ffast-math']
+if platform.system().lower() == "windows":
+    # Visual c++
+    env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall'])
+    env.AppendUnique(CPPDEFINES={'NDEBUG': None})
+    env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF', '/WHOLEARCHIVE:diffpy.lib'])
+    # env.AppendUnique(LINKFLAGS='/EXPORT')
+else: 
+    env.PrependUnique(CXXFLAGS='-std=c++11')
+    if icpc:
+        # options for Intel C++ compiler on hpc dev-intel07
+        env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
+        env.PrependUnique(LIBS=['imf'])
+        fast_optimflags = ['-fast', '-no-ipo']
+    else:
+        # g++ options
+        env.PrependUnique(CCFLAGS=['-Wall'])
+        fast_optimflags = ['-ffast-math']
 
-# Configure build variants
-if env['build'] == 'debug':
-    env.Append(CCFLAGS='-g')
-elif env['build'] == 'coverage':
-    env.CacheDir(None)
-    env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
-    env.Append(LINKFLAGS='--coverage')
-elif env['build'] == 'fast':
-    env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
-    env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
-    env.AppendUnique(LINKFLAGS=fast_linkflags)
+    # Configure build variants
+    if env['build'] == 'debug':
+        env.Append(CCFLAGS='-g')
+    elif env['build'] == 'coverage':
+        env.CacheDir(None)
+        env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
+        env.Append(LINKFLAGS='--coverage')
+    elif env['build'] == 'fast':
+        env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
+        env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
+        env.AppendUnique(LINKFLAGS=fast_linkflags)
 
-if env['profile']:
-    env.AppendUnique(CCFLAGS='-pg')
-    env.AppendUnique(LINKFLAGS='-pg')
+    if env['profile']:
+        env.AppendUnique(CCFLAGS='-pg')
+        env.AppendUnique(LINKFLAGS='-pg')
 
 
 # configure boost and ObjCryst libraries unless non-relevant.
@@ -117,11 +124,15 @@ if 'sdist' in COMMAND_LINE_TARGETS:
 # use new environment with extra libraries needed for libdiffpy.
 env_lib = env.Clone()
 # Setup GSL, the GNU Scientific library.
-env_lib.ParseConfig("gsl-config --cflags --libs")
 # The dladdr call in runtimepath.cpp requires the dl library.
-env_lib.AppendUnique(LIBS=['dl'])
+env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas'])
 
-libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+if platform.system().lower() == "windows":
+    # Use a static library (does not require __declspec(dllexport) all over the code)
+    libdiffpy = env_lib.StaticLibrary('diffpy', env['lib_sources'])
+else:
+    libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+
 # Clean up .gcda and .gcno files from coverage analysis.
 env_lib.Clean(libdiffpy, Glob('diffpy/*.gc??'))
 env_lib.Clean(libdiffpy, Glob('diffpy/srreal/*.gc??'))

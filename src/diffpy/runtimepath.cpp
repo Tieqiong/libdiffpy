@@ -23,8 +23,57 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/stat.h>
-#include <dlfcn.h>
+#include <dlfcn.h> // not available on Windows, conda install dlfcn-win32
+
+// libgen.h is not available on Windows
+#ifdef _WIN32
+#include <string>
+#include <algorithm>
+
+// A simple replacement for dirname() on Windows.
+inline std::string win_dirname(const std::string& path)
+{
+    // Find the last occurrence of either '\' or '/'
+    size_t pos = path.find_last_of("\\/");
+    if (pos == std::string::npos)
+        return ".";  // No directory found, return current directory
+    return path.substr(0, pos);
+}
+
+// Overload to match the expected C-style interface if needed:
+inline char* dirname(char* path)
+{
+    static std::string dir;
+    dir = win_dirname(std::string(path));
+    return const_cast<char*>(dir.c_str());
+}
+#else
 #include <libgen.h>
+#endif
+
+// S_ISDIR, PATH_MAX, realpath, etc.
+#ifdef _WIN32
+#include <windows.h>
+#include <stdlib.h>    // for _fullpath
+#include <sys/stat.h>  // for _stat
+#include <direct.h>    // for _getcwd, etc.
+
+// Define S_ISDIR using the Windows _S_IFDIR flag from sys/stat.h.
+#ifndef S_ISDIR
+#define S_ISDIR(mode) (((mode) & _S_IFDIR) == _S_IFDIR)
+#endif
+
+// Use MAX_PATH from <windows.h> as PATH_MAX if not defined.
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+
+// Define realpath in terms of _fullpath.
+// _fullpath returns a pointer to the resolved path in the buffer you provide.
+// The usage should be nearly equivalent.
+#define realpath(N, R) _fullpath((R), (N), PATH_MAX)
+#endif
+
 
 #include <diffpy/version.hpp>
 #include <diffpy/runtimepath.hpp>

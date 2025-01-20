@@ -19,6 +19,16 @@ def CheckBoostVersion(context, version):
     context.Result(rv)
     return rv
 
+def CheckBoostSerialization(context):
+    context.Message('Checking for boost_serialization... ')
+    test_code = '''
+        #include <boost/serialization/serialization.hpp>
+        int main() { return 0; }
+    '''
+    rv = context.TryCompile(test_code, '.cpp')
+    context.Result(rv)
+    return rv
+
 # Helper functions -----------------------------------------------------------
 
 boostlibtags = ['', '-mt']
@@ -40,10 +50,12 @@ def configure_boost_library(libname):
     print('This program requires %r library' % libname)
     Exit(1)
 
+
 # Start configuration --------------------------------------------------------
 
 conf = Configure(env, custom_tests={
     'CheckBoostVersion' : CheckBoostVersion,
+    'CheckBoostSerialization': CheckBoostSerialization
     })
 
 # serialization of unordered_map requires boost 1.56.0
@@ -52,8 +64,9 @@ if not conf.CheckBoostVersion(boost_required):
     print('This software requires Boost %s or later.' % boost_required)
     Exit(1)
 
-# boost_serialization
-configure_boost_library('boost_serialization')
+if not conf.CheckBoostSerialization():
+    print('Boost.Serialization library not found!')
+    Exit(1)
 
 # ObjCryst - assume a no-objcryst fallback configuration.
 conf.env['has_objcryst'] = False

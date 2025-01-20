@@ -34,12 +34,6 @@ inline double remainder(double x, double y)
         fmod(x, y) : (fmod(x, y) + y);
 }
 
-
-inline double log2(double x)
-{
-    return log(x) / log(2.0);
-}
-
 #endif  // _MSC_VER
 
 namespace diffpy {
