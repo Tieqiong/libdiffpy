@@ -1,0 +1,10 @@
+Import('env')
+
+env.Append(CXXFLAGS=["-std=c++11"])
+env.Append(LINKFLAGS=["-Wl,-rpath," + lib_path])
+env.Append(LIBS=["diffpy", "ObjCryst"])
+
+src = "testlib.cpp"
+target = "a.out"
+
+program = env.Program(target=target, source=src)

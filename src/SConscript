@@ -1,4 +1,5 @@
 import os
+from SCons.Script import *
 
 Import('env')
 
@@ -8,7 +9,7 @@ Import('env')
 # ignore it in the system environment.
 env.PrependUnique(LIBPATH=env['ENV'].get('LIBRARY_PATH', '').split(':'))
 
-# Use Intel C++ compiler if requested by the user.
+# Use C++ compiler specified by the 'tool' option.
 icpc = None
 if env['tool'] == 'intelc':
     icpc = env.WhereIs('icpc')
@@ -17,12 +18,17 @@ if env['tool'] == 'intelc':
         Exit(1)
     env.Tool('intelc', topdir=icpc[:icpc.rfind('/bin')])
 
+if env['tool'] == 'clangxx':
+    llvm = env.WhereIs('clang++')
+    if not llvm:
+        print("Cannot find the clang++ compiler.")
+        Exit(1)
+    env.Tool('clangxx')
+
 fast_linkflags = ['-s']
 
 # Specify minimum C++ standard.  Allow later standard from sconscript.local.
 # In case of multiple `-std` options the last option holds.
-env.PrependUnique(CXXFLAGS='-std=c++11', delete_existing=1)
-
 # Platform specific intricacies.
 if env['PLATFORM'] == 'darwin':
     env.AppendUnique(CXXFLAGS='-ftemplate-depth-256')
@@ -31,31 +37,39 @@ if env['PLATFORM'] == 'darwin':
     fast_linkflags[:] = []
 
 # Compiler specific options
-if icpc:
-    # options for Intel C++ compiler on hpc dev-intel07
-    env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
-    env.PrependUnique(LIBS=['imf'])
-    fast_optimflags = ['-fast', '-no-ipo']
-else:
-    # g++ options
-    env.PrependUnique(CCFLAGS=['-Wall'])
-    fast_optimflags = ['-ffast-math']
+if env['PLATFORM'] == "win32":
+    # Visual c++
+    env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall'])
+    env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
+    env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF', '/WHOLEARCHIVE:diffpy.lib'])
+    # env.AppendUnique(LINKFLAGS='/EXPORT')
+else: 
+    env.PrependUnique(CXXFLAGS='-std=c++11')
+    if icpc:
+        # options for Intel C++ compiler on hpc dev-intel07
+        env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
+        env.PrependUnique(LIBS=['imf'])
+        fast_optimflags = ['-fast', '-no-ipo']
+    else:
+        # g++ options
+        env.PrependUnique(CCFLAGS=['-Wall'])
+        fast_optimflags = ['-ffast-math']
 
-# Configure build variants
-if env['build'] == 'debug':
-    env.Append(CCFLAGS='-g')
-elif env['build'] == 'coverage':
-    env.CacheDir(None)
-    env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
-    env.Append(LINKFLAGS='--coverage')
-elif env['build'] == 'fast':
-    env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
-    env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
-    env.AppendUnique(LINKFLAGS=fast_linkflags)
+    # Configure build variants
+    if env['build'] == 'debug':
+        env.Append(CCFLAGS='-g')
+    elif env['build'] == 'coverage':
+        env.CacheDir(None)
+        env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
+        env.Append(LINKFLAGS='--coverage')
+    elif env['build'] == 'fast':
+        env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
+        env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
+        env.AppendUnique(LINKFLAGS=fast_linkflags)
 
-if env['profile']:
-    env.AppendUnique(CCFLAGS='-pg')
-    env.AppendUnique(LINKFLAGS='-pg')
+    if env['profile']:
+        env.AppendUnique(CCFLAGS='-pg')
+        env.AppendUnique(LINKFLAGS='-pg')
 
 
 # configure boost and ObjCryst libraries unless non-relevant.
@@ -117,11 +131,15 @@ if 'sdist' in COMMAND_LINE_TARGETS:
 # use new environment with extra libraries needed for libdiffpy.
 env_lib = env.Clone()
 # Setup GSL, the GNU Scientific library.
-env_lib.ParseConfig("gsl-config --cflags --libs")
 # The dladdr call in runtimepath.cpp requires the dl library.
-env_lib.AppendUnique(LIBS=['dl'])
+env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization'])
 
-libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+if env['PLATFORM'] == "win32":
+    # Use a static library (does not require __declspec(dllexport) all over the code)
+    libdiffpy = env_lib.StaticLibrary('diffpy', env['lib_sources'])
+else:
+    libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+
 # Clean up .gcda and .gcno files from coverage analysis.
 env_lib.Clean(libdiffpy, Glob('diffpy/*.gc??'))
 env_lib.Clean(libdiffpy, Glob('diffpy/srreal/*.gc??'))

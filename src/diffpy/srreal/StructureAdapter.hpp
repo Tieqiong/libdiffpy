@@ -32,6 +32,12 @@
 #include <diffpy/srreal/R3linalg.hpp>
 #include <diffpy/srreal/BaseBondGenerator.hpp>
 
+#ifdef _MSC_VER
+  #define DEPRECATED __declspec(deprecated)
+#else
+  #define DEPRECATED __attribute__((deprecated))
+#endif
+
 namespace diffpy {
 namespace srreal {
 
@@ -89,9 +95,7 @@ class StructureAdapter :
 
         /// this method allows custom special configuration for a concrete
         /// pair of StructureAdapter and PairQuantity objects.
-        virtual void customPQConfig(PairQuantity* pq) const
-            __attribute__ ((deprecated))
-        { }
+        virtual DEPRECATED void customPQConfig(PairQuantity* pq) const { }
 
         /// Return difference from the other StructureAdapter
         virtual StructureDifference diff(StructureAdapterConstPtr) const;
