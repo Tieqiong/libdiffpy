@@ -7,7 +7,7 @@ Import('env')
 
 # Insert LIBRARY_PATH explicitly because some compilers
 # ignore it in the system environment.
-env.PrependUnique(LIBPATH=env['ENV'].get('LIBRARY_PATH', '').split(':'))
+# env.PrependUnique(LIBPATH=env['ENV'].get('LIBRARY_PATH', '').split(':'))
 
 # Use C++ compiler specified by the 'tool' option.
 icpc = None
@@ -18,12 +18,21 @@ if env['tool'] == 'intelc':
         Exit(1)
     env.Tool('intelc', topdir=icpc[:icpc.rfind('/bin')])
 
-if env['tool'] == 'clangxx':
+if env['tool'] == 'clang':
     llvm = env.WhereIs('clang++')
     if not llvm:
         print("Cannot find the clang++ compiler.")
         Exit(1)
-    env.Tool('clangxx')
+    env=env.Clone(tools=['clangxx'])
+    Export('env')
+
+if env['tool'] == 'gcc':
+    gcc = env.WhereIs('g++')
+    if not gcc:
+        print("Cannot find the g++ compiler.")
+        Exit(1)
+    env=env.Clone(tools=['mingw'])
+    Export('env')
 
 fast_linkflags = ['-s']
 
@@ -38,11 +47,29 @@ if env['PLATFORM'] == 'darwin':
 
 # Compiler specific options
 if env['PLATFORM'] == "win32":
-    # Visual c++
-    env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall'])
-    env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
-    env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF', '/WHOLEARCHIVE:diffpy.lib'])
-    # env.AppendUnique(LINKFLAGS='/EXPORT')
+    if env['tool'] == 'clang':
+        # clang++ on Windows
+        env['CC'] = 'clang'
+        env['CCFLAGS'] = ['-O3', '-ffast-math', '-std=c++14', '-m64']
+        env.PrependUnique(CPPDEFINES='_USE_MATH_DEFINES')
+        env['LINKFLAGS']= ['-fuse-ld=lld-link', '-m64', '-lstdc++']
+
+        # env['CXX'] = 'clang-cl'
+        # env.PrependUnique(CCFLAGS=['-target', 'x86_64-pc-windows-msvc', '/EHsc', '/MD', '/std:c++14'])
+        # env.AppendUnique(CPPDEFINES=['_USE_MATH_DEFINES'])
+        # env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF']) #, '/WHOLEARCHIVE:diffpy.lib'
+    elif env['tool'] == 'gcc':
+        # MinGW
+        env.PrependUnique(CCFLAGS=['-O3', '-std=c++14', '-m64'])
+        env.PrependUnique(CPPDEFINES='_USE_MATH_DEFINES')
+        env.AppendUnique(LINKFLAGS='-m64')
+        
+    else:
+        # Visual c++
+        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall'])
+        env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
+        env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF', '/WHOLEARCHIVE:diffpy.lib']) #, '/WHOLEARCHIVE:diffpy.lib'
+        # env.AppendUnique(LINKFLAGS='/EXPORT')
 else: 
     env.PrependUnique(CXXFLAGS='-std=c++11')
     if icpc:
@@ -132,13 +159,11 @@ if 'sdist' in COMMAND_LINE_TARGETS:
 env_lib = env.Clone()
 # Setup GSL, the GNU Scientific library.
 # The dladdr call in runtimepath.cpp requires the dl library.
-env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization'])
+# env_lib.AppendUnique(LIBPATH=['C:/msys64/mingw64/lib']) #boost_serialization-mt
+env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization']) 
 
-if env['PLATFORM'] == "win32":
-    # Use a static library (does not require __declspec(dllexport) all over the code)
-    libdiffpy = env_lib.StaticLibrary('diffpy', env['lib_sources'])
-else:
-    libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+
+libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
 
 # Clean up .gcda and .gcno files from coverage analysis.
 env_lib.Clean(libdiffpy, Glob('diffpy/*.gc??'))

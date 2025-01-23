@@ -30,3 +30,8 @@ tags
 
 # source distribution tarball
 libdiffpy-*.tar.gz
+
+
+.vs/*
+.exp
+.lib

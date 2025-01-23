@@ -102,7 +102,7 @@ vars.Add(EnumVariable(
 vars.Add(EnumVariable(
     'tool',
     'C++ compiler toolkit to be used',
-    'default', allowed_values=('default', 'clangxx', 'intelc')))
+    'default', allowed_values=('default', 'clang', 'gcc', 'intelc')))
 vars.Add(BoolVariable(
     'enable_objcryst',
     'enable objcryst support, when installed', None))
