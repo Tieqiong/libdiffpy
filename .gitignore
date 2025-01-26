@@ -35,3 +35,4 @@ libdiffpy-*.tar.gz
 .vs/*
 .exp
 .lib
+.vscode/*

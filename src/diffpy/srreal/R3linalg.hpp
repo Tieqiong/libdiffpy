@@ -42,7 +42,7 @@ using ublas::trans;
 
 // Constants
 
-DLL_EXPORT const int Ndim = 3;
+extern DLL_EXPORT const int Ndim;
 using ::diffpy::mathutils::SQRT_DOUBLE_EPS;
 const ublas::zero_vector<double> zerovector(Ndim);
 

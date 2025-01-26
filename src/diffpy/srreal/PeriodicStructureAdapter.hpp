@@ -23,6 +23,7 @@
 #define PERIODICSTRUCTUREADAPTER_HPP_INCLUDED
 
 #include <diffpy/srreal/AtomicStructureAdapter.hpp>
+#include <diffpy/srreal/PointsInSphere.hpp>
 #include <diffpy/srreal/Lattice.hpp>
 
 #include <diffpy/Export.hpp>

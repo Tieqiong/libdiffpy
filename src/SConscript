@@ -66,7 +66,7 @@ if env['PLATFORM'] == "win32":
         
     else:
         # Visual c++
-        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall', '-DBUILD_DLL'])
+        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall', '/DBUILD_DLL'])
         env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
         env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF'])
 
@@ -160,7 +160,7 @@ env_lib = env.Clone()
 # Setup GSL, the GNU Scientific library.
 # The dladdr call in runtimepath.cpp requires the dl library.
 # env_lib.AppendUnique(LIBPATH=['C:/msys64/mingw64/lib']) #boost_serialization-mt
-env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization']) 
+env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization', 'libobjcryst'])
 
 
 libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])

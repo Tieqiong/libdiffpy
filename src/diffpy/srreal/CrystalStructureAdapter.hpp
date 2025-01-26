@@ -113,7 +113,7 @@ class DLL_EXPORT CrystalStructureAdapter : public PeriodicStructureAdapter
         bool isSymmetryCached() const;
 
         // comparison
-        friend bool operator==(
+        friend DLL_EXPORT bool operator==(
                 const CrystalStructureAdapter&, const CrystalStructureAdapter&);
 
         // serialization

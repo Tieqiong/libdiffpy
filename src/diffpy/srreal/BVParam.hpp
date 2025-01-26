@@ -58,14 +58,14 @@ class DLL_EXPORT BVParam
         std::string mref_id;
 
         // hash function for cation-anion bond type only
-        class BondHash
+        class DLL_EXPORT BondHash
         {
             public:
                 size_t operator()(const BVParam&) const;
         };
 
         // equality test for cation-anion bond type
-        class BondEqual
+        class DLL_EXPORT BondEqual
         {
             public:
                 bool operator()(const BVParam& bp0, const BVParam& bp1) const;

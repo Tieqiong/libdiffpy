@@ -71,7 +71,7 @@ typedef PDFEnvelope::SharedPtr PDFEnvelopePtr;
 /// @brief storage of one or more PDFEnvelope functions and their
 /// application to unscaled x, y arrays
 
-class PDFEnvelopeOwner
+class DLL_EXPORT PDFEnvelopeOwner
 {
     public:
 

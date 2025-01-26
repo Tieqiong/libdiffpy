@@ -24,7 +24,7 @@
 #include <diffpy/srreal/PairQuantity.hpp>
 #include <diffpy/srreal/AtomRadiiTable.hpp>
 
-#INCLUDE <diffpy/Export.hpp>
+#include <diffpy/Export.hpp>
 
 namespace diffpy {
 namespace srreal {

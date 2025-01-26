@@ -86,7 +86,7 @@ class DLL_EXPORT PairQuantity : public diffpy::Attributes
 
         friend class PQEvaluatorBasic;
         friend class PQEvaluatorOptimized;
-        friend StructureAdapterPtr
+        friend DLL_EXPORT StructureAdapterPtr
             replacePairQuantityStructure(PairQuantity&, StructureAdapterPtr);
 
         // methods

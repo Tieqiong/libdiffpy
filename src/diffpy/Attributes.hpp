@@ -100,7 +100,7 @@ class DLL_EXPORT Attributes
 
     protected:
 
-        friend void registerBaseDoubleAttribute(Attributes*,
+        friend DLL_EXPORT void registerBaseDoubleAttribute(Attributes*,
                 const std::string&, attributes::BaseDoubleAttribute* pa);
         template <class T, class Getter>
             void registerDoubleAttribute(const std::string& name, T* obj, Getter);
