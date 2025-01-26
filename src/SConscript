@@ -66,10 +66,10 @@ if env['PLATFORM'] == "win32":
         
     else:
         # Visual c++
-        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall'])
+        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall', '-DBUILD_DLL'])
         env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
-        env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF', '/WHOLEARCHIVE:diffpy.lib']) #, '/WHOLEARCHIVE:diffpy.lib'
-        # env.AppendUnique(LINKFLAGS='/EXPORT')
+        env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF'])
+
 else: 
     env.PrependUnique(CXXFLAGS='-std=c++11')
     if icpc:

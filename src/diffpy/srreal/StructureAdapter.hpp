@@ -32,6 +32,8 @@
 #include <diffpy/srreal/R3linalg.hpp>
 #include <diffpy/srreal/BaseBondGenerator.hpp>
 
+#include <diffpy/Export.hpp>
+
 #ifdef _MSC_VER
   #define DEPRECATED __declspec(deprecated)
 #else
@@ -49,7 +51,7 @@ class StructureDifference;
 /// @brief abstract adaptor to structure data needed by
 /// PairQuantity calculator
 
-class StructureAdapter :
+class DLL_EXPORT StructureAdapter :
     public boost::enable_shared_from_this<StructureAdapter>
 {
     public:
@@ -112,7 +114,7 @@ class StructureAdapter :
 // Routines ------------------------------------------------------------------
 
 /// Return a singleton instance of an empty StructureAdapter
-StructureAdapterPtr emptyStructureAdapter();
+DLL_EXPORT StructureAdapterPtr emptyStructureAdapter();
 
 /// Calculate MSD along specified direction in Cartesian space.
 double meanSquareDisplacement(const R3::Matrix& Uijcartn, const R3::Vector& s,

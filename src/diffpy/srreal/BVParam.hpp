@@ -22,10 +22,12 @@
 #include <string>
 #include <boost/serialization/base_object.hpp>
 
+#include <diffpy/Export.hpp>
+
 namespace diffpy {
 namespace srreal {
 
-class BVParam
+class DLL_EXPORT BVParam
 {
     public:
 

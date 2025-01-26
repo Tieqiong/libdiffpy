@@ -25,6 +25,8 @@
 
 #include <diffpy/srreal/PeriodicStructureAdapter.hpp>
 
+#include <diffpy/Export.hpp>
+
 namespace diffpy {
 namespace srreal {
 
@@ -63,7 +65,7 @@ bool operator!=(const SymOpRotTrans& op0, const SymOpRotTrans& op1)
 }
 
 
-class CrystalStructureAdapter : public PeriodicStructureAdapter
+class DLL_EXPORT CrystalStructureAdapter : public PeriodicStructureAdapter
 {
     friend class CrystalStructureBondGenerator;
 
@@ -133,11 +135,11 @@ typedef boost::shared_ptr<CrystalStructureAdapter> CrystalStructureAdapterPtr;
 
 // Comparison functions
 
-bool operator==(const CrystalStructureAdapter&, const CrystalStructureAdapter&);
-bool operator!=(const CrystalStructureAdapter&, const CrystalStructureAdapter&);
+DLL_EXPORT bool operator==(const CrystalStructureAdapter&, const CrystalStructureAdapter&);
+DLL_EXPORT bool operator!=(const CrystalStructureAdapter&, const CrystalStructureAdapter&);
 
 
-class CrystalStructureBondGenerator : public PeriodicStructureBondGenerator
+class DLL_EXPORT CrystalStructureBondGenerator : public PeriodicStructureBondGenerator
 {
     public:
 
