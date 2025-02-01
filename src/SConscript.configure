@@ -19,32 +19,45 @@ def CheckBoostVersion(context, version):
     context.Result(rv)
     return rv
 
+def CheckObjCrystVersion(context, version):
+    '''Check if ObjCryst Library is at least of specified version
+    '''
+    # Boost versions are in format major.minor.subminor
+    v_arr = [int(n) for n in version.split(".")]
+    version_n = str(int(sum([(v * n) for v, n in zip(v_arr, (1e9, 1e6, 1e3))])))+"LL"
+    context.Message('Checking for ObjCryst version >= %s... ' % (version))
+    rv = context.TryCompile('\n'.join([
+        '#include <ObjCryst/version.h>',
+        '#if LIBOBJCRYST_VERSION < %s',
+        '#error Installed ObjCryst is too old!',
+        '#endif',
+        'int main() { return 0; }',
+        '', ]) % version_n, '.cpp')
+    context.Result(rv)
+    return rv
 
 # Start configuration --------------------------------------------------------
 
 conf = Configure(env, custom_tests={
     'CheckBoostVersion' : CheckBoostVersion,
+    'CheckObjCrystVersion' : CheckObjCrystVersion,
     })
 
 # serialization of unordered_map requires boost 1.56.0
 boost_required = '1.56.0'
 if not conf.CheckBoostVersion(boost_required):
     print('This software requires Boost %s or later.' % boost_required)
-    # Exit(1)
+    Exit(1)
 
-
-# ObjCryst - assume a no-objcryst fallback configuration.
-conf.env['has_objcryst'] = False
-# Detect ObjCryst and exit with error if requested and not found.
-# By default conf.env does not contain the 'enable_objcryst' key.
+# Check for ObjCryst library
 if conf.env.get('enable_objcryst', True):
-    conf.env['has_objcryst'] = conf.CheckLibWithHeader(
-        'ObjCryst', 'ObjCryst/ObjCryst/Crystal.h',
-        language='C++', autoadd=True)
-    objcryst_requested = conf.env.get('enable_objcryst', False)
-    if objcryst_requested and not conf.env['has_objcryst']:
-        print("Adjust compiler paths or build with 'enable_objcryst=False'.")
+    if not conf.CheckObjCrystVersion('2017.2.1'):
+        print('ObjCryst library not found. Please install it or disable it.')
         Exit(1)
+    else:
+        conf.env['has_objcryst'] = True
+else:
+    conf.env['has_objcryst'] = False
 
 env = conf.Finish()
 
