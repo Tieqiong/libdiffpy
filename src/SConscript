@@ -1,66 +1,104 @@
 import os
+from SCons.Script import *
+from os.path import join as pjoin
 
 Import('env')
 
 # Build environment configuration --------------------------------------------
 
-# Insert LIBRARY_PATH explicitly because some compilers
-# ignore it in the system environment.
-env.PrependUnique(LIBPATH=env['ENV'].get('LIBRARY_PATH', '').split(':'))
-
-# Use Intel C++ compiler if requested by the user.
-icpc = None
+# Use C++ compiler specified by the 'tool' option.
+# Intel C++ compiler
 if env['tool'] == 'intelc':
     icpc = env.WhereIs('icpc')
     if not icpc:
         print("Cannot find the Intel C/C++ compiler 'icpc'.")
         Exit(1)
     env.Tool('intelc', topdir=icpc[:icpc.rfind('/bin')])
+    env=env.Clone()
 
-fast_linkflags = ['-s']
+# Clang++ compiler
+if env['tool'] == 'clang':
+    llvm = env.WhereIs('clang++')
+    if not llvm:
+        print("Cannot find the clang++ compiler.")
+        Exit(1)
+    env=env.Clone(tools=['clangxx'])
 
-# Specify minimum C++ standard.  Allow later standard from sconscript.local.
-# In case of multiple `-std` options the last option holds.
-env.PrependUnique(CXXFLAGS='-std=c++11', delete_existing=1)
+# g++ compiler
+if env['tool'] == 'gcc':
+    gcc = env.WhereIs('g++')
+    if not gcc:
+        print("Cannot find the g++ compiler.")
+        Exit(1)
+    env=env.Clone(tools=['mingw'])
+
+# Default use scons auto found compiler
 
 # Platform specific intricacies.
+fast_linkflags = ['-s']
+
+# macOS specific options
 if env['PLATFORM'] == 'darwin':
     env.AppendUnique(CXXFLAGS='-ftemplate-depth-256')
-    env.Append(SHLINKFLAGS=['-install_name', '$TARGET.abspath'])
+    env.AppendUnique(SHLINKFLAGS=['-install_name', '$TARGET.abspath'])
     env.AppendUnique(SHLINKFLAGS='-headerpad_max_install_names')
     fast_linkflags[:] = []
 
 # Compiler specific options
-if icpc:
-    # options for Intel C++ compiler on hpc dev-intel07
-    env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
-    env.PrependUnique(LIBS=['imf'])
-    fast_optimflags = ['-fast', '-no-ipo']
-else:
-    # g++ options
-    env.PrependUnique(CCFLAGS=['-Wall'])
-    fast_optimflags = ['-ffast-math']
+if env['PLATFORM'] == "win32":
+    if env['tool'] == 'clang':
+        # clang++ on Windows
+        env['CC'] = 'clang'
+        env['CCFLAGS'] = ['-O3', '-ffast-math', '-std=c++14', '-m64', '-DBUILD_DLL']
+        env.PrependUnique(CPPDEFINES='_USE_MATH_DEFINES')
+        env['LINKFLAGS']= ['-fuse-ld=lld-link', '-m64', '-lstdc++']
 
-# Configure build variants
-if env['build'] == 'debug':
-    env.Append(CCFLAGS='-g')
-elif env['build'] == 'coverage':
-    env.CacheDir(None)
-    env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
-    env.Append(LINKFLAGS='--coverage')
-elif env['build'] == 'fast':
-    env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
-    env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
-    env.AppendUnique(LINKFLAGS=fast_linkflags)
+    elif env['tool'] == 'gcc':
+        # MinGW
+        env.PrependUnique(CCFLAGS=['-O3', '-std=c++14', '-m64', '-DBUILD_DLL'])
+        env.PrependUnique(CPPDEFINES='_USE_MATH_DEFINES')
+        env.AppendUnique(LINKFLAGS='-m64')
+        
+    else:
+        # Visual c++
+        env.PrependUnique(CCFLAGS=['/Ox', '/EHsc', '/MD', '/std:c++14', '/Wall', '/DBUILD_DLL'])
+        env.AppendUnique(CPPDEFINES=[{'NDEBUG': None}, '_USE_MATH_DEFINES'])
+        env.AppendUnique(LINKFLAGS=['/OPT:NOREF', '/OPT:NOICF'])
 
-if env['profile']:
-    env.AppendUnique(CCFLAGS='-pg')
-    env.AppendUnique(LINKFLAGS='-pg')
+else: 
+    env.PrependUnique(CXXFLAGS='-std=c++11')
+    if icpc:
+        # options for Intel C++ compiler on hpc dev-intel07
+        env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
+        env.PrependUnique(LIBS=['imf'])
+        fast_optimflags = ['-fast', '-no-ipo']
+    else:
+        # g++ options
+        env.PrependUnique(CCFLAGS=['-Wall'])
+        fast_optimflags = ['-ffast-math']
+
+    # Configure build variants
+    if env['build'] == 'debug':
+        env.Append(CCFLAGS='-g')
+    elif env['build'] == 'coverage':
+        env.CacheDir(None)
+        env.Append(CCFLAGS=['-g', '--coverage', '-O0'])
+        env.Append(LINKFLAGS='--coverage')
+    elif env['build'] == 'fast':
+        env.AppendUnique(CCFLAGS=['-O3'] + fast_optimflags)
+        env.AppendUnique(CPPDEFINES={'NDEBUG' : None})
+        env.AppendUnique(LINKFLAGS=fast_linkflags)
+
+    if env['profile']:
+        env.AppendUnique(CCFLAGS='-pg')
+        env.AppendUnique(LINKFLAGS='-pg')
 
 
 # configure boost and ObjCryst libraries unless non-relevant.
 skip_configure = (GetOption('clean') or GetOption('help') or
                   (['sdist'] == list(COMMAND_LINE_TARGETS)))
+
+# Check dependencies
 if not skip_configure:
     SConscript('SConscript.configure')
 
@@ -117,11 +155,15 @@ if 'sdist' in COMMAND_LINE_TARGETS:
 # use new environment with extra libraries needed for libdiffpy.
 env_lib = env.Clone()
 # Setup GSL, the GNU Scientific library.
-env_lib.ParseConfig("gsl-config --cflags --libs")
-# The dladdr call in runtimepath.cpp requires the dl library.
-env_lib.AppendUnique(LIBS=['dl'])
+# The dladdr call in runtimepath.cpp requires the dl library for Windows.
+if env['has_objcryst'] == True:
+    env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization', 'libobjcryst'])
+else:
+    env_lib.AppendUnique(LIBS=['dl', 'gsl', 'gslcblas','boost_serialization'])
+
 
 libdiffpy = env_lib.SharedLibrary('diffpy', env['lib_sources'])
+
 # Clean up .gcda and .gcno files from coverage analysis.
 env_lib.Clean(libdiffpy, Glob('diffpy/*.gc??'))
 env_lib.Clean(libdiffpy, Glob('diffpy/srreal/*.gc??'))
@@ -141,17 +183,36 @@ if targets_that_test.intersection(COMMAND_LINE_TARGETS):
 prefix = env['prefix']
 
 # install-lib
-install_lib = env.Install(env['libdir'], libdiffpy)
-if env['PLATFORM'] == 'darwin':
-    # DARWIN_INSTALL_NAME can be pre-set in sconscript.local
-    env.SetDefault(DARWIN_INSTALL_NAME='$TARGET.abspath')
-    env.AddPostAction(install_lib,
-                      'install_name_tool -id $DARWIN_INSTALL_NAME $TARGET')
-if env['PLATFORM'] == 'posix' and WhereIs('ldconfig'):
-    opts = '' if os.getuid() == 0 else '-n'
-    env.AddPostAction(install_lib,
-                      'ldconfig %s $TARGET.dir' % opts)
-Alias('install-lib', install_lib)
+if env['PLATFORM'] in ['darwin', 'posix']:
+    install_lib = env.Install(env['libdir'], libdiffpy)
+    if env['PLATFORM'] == 'darwin':
+        # DARWIN_INSTALL_NAME can be pre-set in sconscript.local
+        env.SetDefault(DARWIN_INSTALL_NAME='$TARGET.abspath')
+        env.AddPostAction(install_lib,
+                          'install_name_tool -id $DARWIN_INSTALL_NAME $TARGET')
+    if env['PLATFORM'] == 'posix' and WhereIs('ldconfig'):
+        opts = '' if os.getuid() == 0 else '-n'
+        env.AddPostAction(install_lib,
+                          'ldconfig %s $TARGET.dir' % opts)
+    Alias('install-lib', install_lib)
+
+if env['PLATFORM'] == 'win32':
+    bindir = pjoin(prefix, 'Library', 'bin')
+    for node in libdiffpy:
+        ext = os.path.splitext(str(node))[1].lower()
+        if ext == '.dll':
+            dll_node = node
+        elif ext == '.lib':
+            lib_node = node
+
+    if dll_node is None:
+        print("Warning: DLL file not found in build outputs.")
+    if lib_node is None:
+        print("Warning: LIB file not found in build outputs.")
+
+    install_dll = env.Install(bindir, dll_node)
+    install_lib = env.Install(env['libdir'], lib_node)
+    Alias('install-lib', [install_dll, install_lib])
 
 # install-include
 ninc = len(Dir('.').path) + 1
