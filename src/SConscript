@@ -67,7 +67,7 @@ if env['PLATFORM'] == "win32":
 
 else: 
     env.PrependUnique(CXXFLAGS='-std=c++11')
-    if icpc:
+    if env['tool'] == 'intelc':
         # options for Intel C++ compiler on hpc dev-intel07
         env.PrependUnique(CCFLAGS=['-w1', '-fp-model', 'precise'])
         env.PrependUnique(LIBS=['imf'])
