@@ -54,25 +54,30 @@ void serialization_fromstring(T& tobj, const std::string& s)
     ia >> tobj;
 }
 
-}   // namespace diffpy
-
 // Macros --------------------------------------------------------------------
+// Macros for explicit instantiation:
+// - On Windows (_WIN32), make them no-ops to avoid dllimport/dllexport issues.
+// - On other platforms, keep them as they were.
+#ifdef _WIN32
 
-/// Insert explicit instantiations for serialization_tostring and
-/// serialization_fromstring for class C.
+    #define DIFFPY_INSTANTIATE_SERIALIZATION(C)     /* no-op */
+    #define DIFFPY_INSTANTIATE_PTR_SERIALIZATION(C) /* no-op */
 
-#define DIFFPY_INSTANTIATE_SERIALIZATION(C) \
-    template \
-        std::string \
-        diffpy::serialization_tostring<C>(const C&); \
-    template \
-        void \
-        diffpy::serialization_fromstring<C>(C&, const std::string&); \
+#else
 
-/// Insert explicit instantiations for serialization_tostring and
-/// serialization_fromstring for type boost::shared_ptr<C>.
+    /// Insert explicit instantiations for serialization_tostring and
+    /// serialization_fromstring for class C.
+    #define DIFFPY_INSTANTIATE_SERIALIZATION(C) \
+        template std::string diffpy::serialization_tostring<C>(const C&); \
+        template void diffpy::serialization_fromstring<C>(C&, const std::string&);
 
-#define DIFFPY_INSTANTIATE_PTR_SERIALIZATION(C) \
-    DIFFPY_INSTANTIATE_SERIALIZATION(boost::shared_ptr<C>)
+    /// Insert explicit instantiations for serialization_tostring and
+    /// serialization_fromstring for type boost::shared_ptr<C>.
+    #define DIFFPY_INSTANTIATE_PTR_SERIALIZATION(C) \
+        DIFFPY_INSTANTIATE_SERIALIZATION(boost::shared_ptr<C>)
+
+#endif
+
+}   // namespace diffpy
 
 #endif  // SERIALIZATION_IPP_INCLUDED
