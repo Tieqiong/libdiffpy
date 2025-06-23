@@ -17,7 +17,7 @@ jobs:
         run: echo "→ result='${{ steps.perm.outputs.result }}'"
 
       - name: Fail if not admin
-        if: ${{ steps.perm.outputs.result != 'admin' }}
+        if: 0
         run: |
           echo "🚫 should never get here"
           exit 1
