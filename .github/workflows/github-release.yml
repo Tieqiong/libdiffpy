@@ -1,10 +1,13 @@
 name: "Tag-based Release with SHA256"
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - '*'
+
+permissions:
+  contents: read
+  metadata: read
 
 jobs:
   release:
@@ -22,14 +25,14 @@ jobs:
               username: context.actor
             });
             return data.permission
-      
+
       - name: what did we actually get?
         run: echo "→ permission='${{ steps.perm.outputs.result }}'"
 
       - name: Fail if not maintainer/admin
         if: ${{ steps.perm.outputs.result != 'maintain' && steps.perm.outputs.result != 'admin' }}
         run: |
-          echo "${{ github.actor }} is not a maintainer or admin"
+          echo "🚫 ${{ github.actor }} is not a maintainer or admin"
           exit 1
 
       - name: Download source tarball
