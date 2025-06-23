@@ -1,0 +1,26 @@
+name: “Test If”
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Return “admin”
+        id: perm
+        uses: actions/github-script@v6
+        with:
+          script: |
+            return 'admin'
+
+      - name: Debug result
+        run: echo "→ result='${{ steps.perm.outputs.result }}'"
+
+      - name: Fail if not admin
+        if: ${{ steps.perm.outputs.result != 'admin' }}
+        run: |
+          echo "🚫 should never get here"
+          exit 1
+
+      - name: Success!
+        run: echo "✅ reached the end"
