@@ -16,13 +16,15 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            // get permission level
             const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
               owner: context.repo.owner,
               repo: context.repo.repo,
               username: context.actor
             });
-            return data.permission  // this becomes steps.perm.outputs.result
+            return data.permission
+      
+      - name: what did we actually get?
+        run: echo "→ permission='${{ steps.perm.outputs.result }}'"
 
       - name: Fail if not maintainer/admin
         if: ${{ steps.perm.outputs.result != 'maintain' && steps.perm.outputs.result != 'admin' }}
