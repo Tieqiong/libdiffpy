@@ -1,0 +1,52 @@
+name: "Tag-based Release with SHA256"
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check collaborator permission level
+        id: perm
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // get permission level
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            return data.permission  // this becomes steps.perm.outputs.result
+
+      - name: Fail if not maintainer/admin
+        if: ${{ steps.perm.outputs.result != 'maintain' && steps.perm.outputs.result != 'admin' }}
+        run: |
+          echo "${{ github.actor }} is not a maintainer or admin"
+          exit 1
+
+      - name: Download source tarball
+        run: |
+          curl -L "https://codeload.github.com/${{ github.repository }}/tar.gz/${{ github.ref_name }}" \
+            -o source.tar.gz
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          shasum=$(openssl sha256 source.tar.gz | awk '{print $2}')
+          echo "sha=$shasum" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            SHA256 (tar.gz): ${{ steps.sha.outputs.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
